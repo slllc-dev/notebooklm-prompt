@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NotebookLM 簡報風格指令產生器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --panel-height: 260px; 
+        }
+        body {
+            background-color: #f8fafc;
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            overflow-x: hidden;
+        }
+        .content-wrapper {
+            padding-bottom: var(--panel-height);
+        }
+        .option-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+        }
+        .option-card:active {
+            transform: scale(0.95);
+        }
+        .option-card.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+        .visual-preview {
+            width: 100%;
+            aspect-ratio: 16/9;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            overflow: hidden;
+        }
+        .check-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #3b82f6;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            z-index: 10;
+        }
+        .option-card.selected .check-badge {
+            display: flex;
+        }
+        .selection-count {
+            font-size: 0.75rem;
+            font-weight: normal;
+            background: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 999px;
+            color: #64748b;
+        }
+        #result-panel {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #result-panel.collapsed {
+            transform: translateY(calc(100% - 48px));
+        }
+        .toggle-icon {
+            transition: transform 0.3s;
+        }
+        .collapsed .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        @media (max-width: 640px) {
+            :root {
+                --panel-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <div class="content-wrapper max-w-5xl mx-auto px-4 pt-8 pb-12">
+        <!-- Header -->
+        <header class="mb-10 text-center">
+            <h1 class="text-3xl md:text-4xl font-black text-slate-800 mb-2">NotebookLM 簡報指令產生器</h1>
+            <p class="text-slate-500 text-sm md:text-base">針對 NotebookLM 邏輯優化,每項可選 0-2 種風格</p>
+        </header>
+
+        <div class="space-y-12">
+            <!-- 0. Target Audience -->
+            <section id="sec-audience">
+                <h2 class="text-lg font-bold mb-4 flex items-center justify-between text-slate-700">
+                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-emerald-500 rounded-full"></span> 目標對象 Audience</span>
+                </h2>
+                <div class="flex flex-wrap gap-2 mb-3" id="group-audience">
+                    <!-- JS populated -->
+                </div>
+                <input type="text" id="custom-audience" placeholder="自定義對象 (如:跨國投資人、新手爸媽...)" class="w-full p-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition bg-white">
+            </section>
+
+            <!-- 1. Style -->
+            <section id="sec-style">
+                <h2 class="text-lg font-bold mb-4 flex items-center justify-between text-slate-700">
+                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-blue-500 rounded-full"></span> 1. 整體風格 Style</span>
+                    <span id="count-style" class="selection-count">0/2</span>
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="group-style"></div>
+            </section>
+
+            <!-- 2. Color -->
+            <section id="sec-color">
+                <h2 class="text-lg font-bold mb-4 flex items-center justify-between text-slate-700">
+                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-purple-500 rounded-full"></span> 2. 色彩氛圍 Color</span>
+                    <span id="count-color" class="selection-count">0/2</span>
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="group-color"></div>
+            </section>
+
+            <!-- 3. Visual -->
+            <section id="sec-visual">
+                <h2 class="text-lg font-bold mb-4 flex items-center justify-between text-slate-700">
+                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-pink-500 rounded-full"></span> 3. 圖像風格 Visual</span>
+                    <span id="count-visual" class="selection-count">0/2</span>
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="group-visual"></div>
+            </section>
+
+            <!-- 4. Layout -->
+            <section id="sec-layout">
+                <h2 class="text-lg font-bold mb-8 flex items-center justify-between text-slate-700">
+                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span> 4. 版面結構 Layout</span>
+                    <span id="count-layout" class="selection-count">0/2</span>
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="group-layout"></div>
+            </section>
+        </div>
+    </div>
+
+    <!-- 可收合式底部面板 -->
+    <div id="result-panel" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.1)] z-50">
+        <!-- 切換按鈕區 -->
+        <div id="panel-toggle" class="bg-slate-50 border-b border-slate-100 py-2 px-4 cursor-pointer flex items-center justify-between hover:bg-slate-100 transition">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <i class="fas fa-terminal"></i> 指令預覽區
+            </span>
+            <i class="fas fa-chevron-down toggle-icon text-slate-400 text-sm"></i>
+        </div>
+
+        <div class="max-w-5xl mx-auto p-4 md:p-6">
+            <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-bold text-slate-500">NotebookLM Prompt Output</label>
+                <button id="reset-btn" class="text-xs text-slate-400 hover:text-red-500 underline">全部重設</button>
+            </div>
+            
+            <div id="prompt-output" class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs md:text-sm font-mono text-slate-600 h-24 md:h-28 overflow-y-auto mb-4 leading-relaxed">
+                尚未選擇... 請從上方點選風格維度(每類最多 2 項)。
+            </div>
+
+            <button id="copy-btn" class="w-full bg-slate-900 hover:bg-black text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg">
+                <i class="fas fa-copy"></i> 複製 NotebookLM 指令
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-2 rounded-full text-sm font-bold opacity-0 transition-opacity z-[100] pointer-events-none shadow-xl">
+        指令已複製!
+    </div>
+
+    <script>
+        const config = {
+            audience: ['兒童', '國小生', '國高中生', '大學生', '社會青年', '成人', '家庭', '長者'],
+            style: [
+                { label: '極簡風', en: 'Minimalist', preview: 'bg-white border' },
+                { label: '現代企業', en: 'Corporate Modern', preview: 'bg-slate-700' },
+                { label: '創意設計', en: 'Creative Artistic', preview: 'bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500' },
+                { label: '手繪插畫', en: 'Hand-drawn Sketch', preview: 'bg-orange-50 border-2 border-dashed border-orange-200 text-orange-400', icon: 'fa-pencil-alt' },
+                { label: '卡通動畫', en: 'Cartoon Anime', preview: 'bg-yellow-300 text-yellow-700', icon: 'fa-grin' },
+                { label: '教育教材', en: 'Educational Infographic', preview: 'bg-sky-100 text-sky-600', icon: 'fa-book-open' },
+                { label: '科技感', en: 'Dark Futuristic', preview: 'bg-black text-cyan-400 shadow-[inset_0_0_10px_rgba(34,211,238,0.5)]', icon: 'fa-microchip' },
+                { label: '簡約北歐', en: 'Nordic Scandinavian', preview: 'bg-zinc-200 text-zinc-500', icon: 'fa-leaf' },
+                { label: '柔和文青', en: 'Pastel Calm', preview: 'bg-rose-100 text-rose-400', icon: 'fa-cloud' },
+                { label: '海報大膽', en: 'Bold Typography', preview: 'bg-red-600 text-white font-black', icon: 'fa-font' }
+            ],
+            layout: [
+                { label: '標準重點', en: 'Standard bullet points', icon: 'fa-list-ul' },
+                { label: '全屏大圖', en: 'Full-bleed imagery', icon: 'fa-expand' },
+                { label: '左右對分', en: 'Split composition', icon: 'fa-columns' },
+                { label: '網格排列', en: 'Modular grid', icon: 'fa-th-large' },
+                { label: '數據圖表', en: 'Data-driven charts', icon: 'fa-chart-bar' },
+                { label: '時間軸', en: 'Chronological timeline', icon: 'fa-clock' },
+                { label: '卡片式', en: 'Card containers', icon: 'fa-address-card' },
+                { label: '流程圖', en: 'Process flow', icon: 'fa-project-diagram' },
+                { label: '自由排版', en: 'Dynamic asymmetrical', icon: 'fa-random' },
+                { label: '拼貼畫', en: 'Moodboard collage', icon: 'fa-border-all' }
+            ],
+            color: [
+                { label: '單色系', en: 'Monochromatic', gradient: 'from-slate-400 to-slate-600' },
+                { label: '強烈對比', en: 'High Contrast', gradient: 'from-black to-white border' },
+                { label: '粉彩', en: 'Pastel Soft', gradient: 'from-pink-200 to-blue-200' },
+                { label: '深色調', en: 'Dark Mode', gradient: 'from-slate-800 to-slate-950' },
+                { label: '明亮清爽', en: 'Bright Airy', gradient: 'from-orange-50 to-white' },
+                { label: '大地色', en: 'Earth Tones', gradient: 'from-orange-900 to-stone-400' },
+                { label: '科技霓虹', en: 'Cyber Neon', gradient: 'from-blue-600 to-fuchsia-500' },
+                { label: '彩色漸層', en: 'Vivid Gradient', gradient: 'from-yellow-400 to-red-500' },
+                { label: '色彩豐富', en: 'Vibrant Rainbow', gradient: 'from-green-400 via-blue-500 to-purple-600' },
+                { label: '極簡黑白', en: 'Classic B&W', gradient: 'from-zinc-900 via-zinc-400 to-zinc-100' }
+            ],
+            visual: [
+                { label: '實拍照', en: 'Realistic Photo', icon: 'fa-camera-retro' },
+                { label: '扁平圖示', en: 'Flat Icons', icon: 'fa-icons' },
+                { label: '線條插畫', en: 'Line Art', icon: 'fa-pen-fancy' },
+                { label: '水彩感', en: 'Watercolor', icon: 'fa-brush' },
+                { label: '3D 渲染', en: '3D Isometric', icon: 'fa-cube' },
+                { label: '動態感', en: 'Motion style', icon: 'fa-running' },
+                { label: '資訊圖標', en: 'Infographic', icon: 'fa-info-circle' },
+                { label: '卡通角色', en: 'Mascot/Character', icon: 'fa-user-ninja' },
+                { label: '拼貼', en: 'Analog Collage', icon: 'fa-cut' },
+                { label: '幾何圖形', en: 'Geometric Abstract', icon: 'fa-shapes' }
+            ]
+        };
+
+        let selections = {
+            audience: '',
+            style: [],
+            layout: [],
+            color: [],
+            visual: []
+        };
+
+        function init() {
+            // Populate Audience
+            const audGroup = document.getElementById('group-audience');
+            config.audience.forEach(aud => {
+                const btn = document.createElement('button');
+                btn.className = 'px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold hover:border-emerald-500 transition shadow-sm';
+                btn.innerText = aud;
+                btn.onclick = () => {
+                    document.querySelectorAll('#group-audience button').forEach(b => {
+                        b.className = 'px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold hover:border-emerald-500 transition shadow-sm';
+                    });
+                    btn.className = 'px-4 py-2 border rounded-full text-xs font-bold transition shadow-sm bg-emerald-500 text-white border-emerald-500';
+                    selections.audience = aud;
+                    updatePrompt();
+                };
+                audGroup.appendChild(btn);
+            });
+
+            // Custom audience input
+            document.getElementById('custom-audience').oninput = (e) => {
+                if (e.target.value) {
+                    document.querySelectorAll('#group-audience button').forEach(b => {
+                        b.className = 'px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold hover:border-emerald-500 transition shadow-sm';
+                    });
+                    selections.audience = e.target.value;
+                } else {
+                    selections.audience = '';
+                }
+                updatePrompt();
+            };
+
+            // Populate other sections
+            Object.keys(config).forEach(key => {
+                if (key === 'audience') return;
+                
+                const container = document.getElementById(`group-${key}`);
+                config[key].forEach(opt => {
+                    const card = document.createElement('div');
+                    card.className = 'option-card bg-white p-2 md:p-3 rounded-lg shadow-sm flex flex-col items-center';
+                    
+                    let visualContent = '';
+                    if (key === 'style') {
+                        visualContent = `<div class="visual-preview ${opt.preview}">${opt.icon ? `<i class="fas ${opt.icon}"></i>` : (opt.label === '海報大膽' ? 'Aa' : '')}</div>`;
+                    } else if (key === 'color') {
+                        visualContent = `<div class="visual-preview bg-gradient-to-br ${opt.gradient}"></div>`;
+                    } else {
+                        visualContent = `<div class="visual-preview bg-slate-50 text-slate-400"><i class="fas ${opt.icon}"></i></div>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="check-badge"><i class="fas fa-check"></i></div>
+                        ${visualContent}
+                        <span class="text-[11px] md:text-xs font-bold text-slate-600 text-center leading-tight">${opt.label}</span>
+                    `;
+
+                    card.onclick = () => {
+                        const index = selections[key].indexOf(opt.en);
+                        if (index > -1) {
+                            selections[key].splice(index, 1);
+                            card.classList.remove('selected');
+                        } else {
+                            if (selections[key].length < 2) {
+                                selections[key].push(opt.en);
+                                card.classList.add('selected');
+                            } else {
+                                card.classList.add('animate-pulse');
+                                setTimeout(() => card.classList.remove('animate-pulse'), 500);
+                            }
+                        }
+                        updateUI(key);
+                        updatePrompt();
+                    };
+                    container.appendChild(card);
+                });
+            });
+
+            // 面板收合邏輯
+            const panel = document.getElementById('result-panel');
+            const toggle = document.getElementById('panel-toggle');
+            toggle.onclick = () => {
+                panel.classList.toggle('collapsed');
+            };
+        }
+
+        function updateUI(key) {
+            const countEl = document.getElementById(`count-${key}`);
+            countEl.innerText = `${selections[key].length}/2`;
+            if (selections[key].length === 2) {
+                countEl.classList.replace('bg-e2e8f0', 'bg-blue-100');
+                countEl.classList.add('text-blue-600', 'font-bold');
+            } else {
+                countEl.className = 'selection-count';
+            }
+        }
+
+        function updatePrompt() {
+            const output = document.getElementById('prompt-output');
+            const { audience, style, layout, color, visual } = selections;
+            
+            const hasSelection = audience || [style, layout, color, visual].some(arr => arr.length > 0);
+            
+            if (!hasSelection) {
+                output.innerText = "尚未選擇... 請從上方點選風格維度(每類最多 2 項)。";
+                return;
+            }
+
+            const formatArr = (arr) => arr.length > 0 ? arr.join(" and ") : "Professional/Default";
+
+            let prompt = `Act as a presentation designer. Please analyze the provided source material and organize the content into a structured presentation outline using the following visual logic:
+
+[Visual Style Configuration]`;
+
+            if (audience) {
+                prompt += `\n- Target Audience: ${audience}`;
+            }
+
+            prompt += `
+- Overall Theme: A blend of ${formatArr(style)} style.
+- Layout Structure: Incorporating ${formatArr(layout)} structures.
+- Color Palette: Based on ${formatArr(color)} tones.
+- Graphic Direction: Utilizing ${formatArr(visual)} elements.
+
+[Output Format]
+For each slide/section:
+1. Slide Title: (Contextually relevant title)
+2. Visual Concept: Describe a specific background and layout based on the configuration above.
+3. Content: 3-5 concise bullet points strictly based on the provided documents.
+
+Please ensure the tone is professional and suitable for the selected styles${audience ? ' and target audience' : ''}.`;
+
+            output.innerText = prompt;
+        }
+
+        document.getElementById('reset-btn').onclick = (e) => {
+            e.stopPropagation();
+            selections = { audience: '', style: [], layout: [], color: [], visual: [] };
+            document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+            document.querySelectorAll('#group-audience button').forEach(b => {
+                b.className = 'px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold hover:border-emerald-500 transition shadow-sm';
+            });
+            document.getElementById('custom-audience').value = '';
+            Object.keys(selections).forEach(key => {
+                if (key !== 'audience') updateUI(key);
+            });
+            updatePrompt();
+        };
+
+        document.getElementById('copy-btn').onclick = (e) => {
+            e.stopPropagation();
+            const text = document.getElementById('prompt-output').innerText;
+            if (text.includes("尚未選擇")) return;
+            
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+
+            const toast = document.getElementById('toast');
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 2000);
+        };
+
+        window.onload = init;
+    </script>
+</body>
+</html>

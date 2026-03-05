@@ -8,13 +8,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --panel-height: 260px; 
+            --panel-height: 260px; /* 增加預留高度 */
         }
         body {
             background-color: #f8fafc;
             font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
             overflow-x: hidden;
         }
+        /* 確保底部內容完全可見 */
         .content-wrapper {
             padding-bottom: var(--panel-height);
         }
@@ -69,22 +70,9 @@
             border-radius: 999px;
             color: #64748b;
         }
-        #result-panel {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        #result-panel.collapsed {
-            transform: translateY(calc(100% - 48px));
-        }
-        .toggle-icon {
-            transition: transform 0.3s;
-        }
-        .collapsed .toggle-icon {
-            transform: rotate(180deg);
-        }
-
         @media (max-width: 640px) {
             :root {
-                --panel-height: 300px;
+                --panel-height: 280px;
             }
         }
     </style>
@@ -95,21 +83,10 @@
         <!-- Header -->
         <header class="mb-10 text-center">
             <h1 class="text-3xl md:text-4xl font-black text-slate-800 mb-2">NotebookLM 簡報指令產生器</h1>
-            <p class="text-slate-500 text-sm md:text-base">針對 NotebookLM 邏輯優化,每項可選 0-2 種風格</p>
+            <p class="text-slate-500 text-sm md:text-base">針對 NotebookLM 邏輯優化，每項可選 0-2 種風格</p>
         </header>
 
         <div class="space-y-12">
-            <!-- 0. Target Audience -->
-            <section id="sec-audience">
-                <h2 class="text-lg font-bold mb-4 flex items-center justify-between text-slate-700">
-                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-emerald-500 rounded-full"></span> 目標對象 Audience</span>
-                </h2>
-                <div class="flex flex-wrap gap-2 mb-3" id="group-audience">
-                    <!-- JS populated -->
-                </div>
-                <input type="text" id="custom-audience" placeholder="自定義對象 (如:跨國投資人、新手爸媽...)" class="w-full p-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition bg-white">
-            </section>
-
             <!-- 1. Style -->
             <section id="sec-style">
                 <h2 class="text-lg font-bold mb-4 flex items-center justify-between text-slate-700">
@@ -119,69 +96,60 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="group-style"></div>
             </section>
 
-            <!-- 2. Color -->
+            <!-- 2. Layout -->
+            <section id="sec-layout">
+                <h2 class="text-lg font-bold mb-4 flex items-center justify-between text-slate-700">
+                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span> 2. 版面結構 Layout</span>
+                    <span id="count-layout" class="selection-count">0/2</span>
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="group-layout"></div>
+            </section>
+
+            <!-- 3. Color -->
             <section id="sec-color">
                 <h2 class="text-lg font-bold mb-4 flex items-center justify-between text-slate-700">
-                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-purple-500 rounded-full"></span> 2. 色彩氛圍 Color</span>
+                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-purple-500 rounded-full"></span> 3. 色彩氛圍 Color</span>
                     <span id="count-color" class="selection-count">0/2</span>
                 </h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="group-color"></div>
             </section>
 
-            <!-- 3. Visual -->
+            <!-- 4. Visual -->
             <section id="sec-visual">
                 <h2 class="text-lg font-bold mb-4 flex items-center justify-between text-slate-700">
-                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-pink-500 rounded-full"></span> 3. 圖像風格 Visual</span>
+                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-pink-500 rounded-full"></span> 4. 圖像風格 Visual</span>
                     <span id="count-visual" class="selection-count">0/2</span>
                 </h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="group-visual"></div>
             </section>
-
-            <!-- 4. Layout -->
-            <section id="sec-layout">
-                <h2 class="text-lg font-bold mb-8 flex items-center justify-between text-slate-700">
-                    <span class="flex items-center gap-2"><span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span> 4. 版面結構 Layout</span>
-                    <span id="count-layout" class="selection-count">0/2</span>
-                </h2>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="group-layout"></div>
-            </section>
         </div>
     </div>
 
-    <!-- 可收合式底部面板 -->
-    <div id="result-panel" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.1)] z-50">
-        <!-- 切換按鈕區 -->
-        <div id="panel-toggle" class="bg-slate-50 border-b border-slate-100 py-2 px-4 cursor-pointer flex items-center justify-between hover:bg-slate-100 transition">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <i class="fas fa-terminal"></i> 指令預覽區
-            </span>
-            <i class="fas fa-chevron-down toggle-icon text-slate-400 text-sm"></i>
-        </div>
-
+    <!-- 底部固定面板 -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.1)] z-50">
         <div class="max-w-5xl mx-auto p-4 md:p-6">
             <div class="flex items-center justify-between mb-2">
-                <label class="text-xs font-bold text-slate-500">NotebookLM Prompt Output</label>
+                <label class="text-xs font-bold text-slate-400 uppercase tracking-tighter">Generated Prompt for NotebookLM</label>
                 <button id="reset-btn" class="text-xs text-slate-400 hover:text-red-500 underline">全部重設</button>
             </div>
             
             <div id="prompt-output" class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs md:text-sm font-mono text-slate-600 h-24 md:h-28 overflow-y-auto mb-4 leading-relaxed">
-                尚未選擇... 請從上方點選風格維度(每類最多 2 項)。
+                尚未選擇... 請從上方點選風格維度（每類最多 2 項）。
             </div>
 
             <button id="copy-btn" class="w-full bg-slate-900 hover:bg-black text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg">
-                <i class="fas fa-copy"></i> 複製 NotebookLM 指令
+                <i class="fas fa-copy"></i> 複製指令
             </button>
         </div>
     </div>
 
     <!-- Toast -->
     <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-2 rounded-full text-sm font-bold opacity-0 transition-opacity z-[100] pointer-events-none shadow-xl">
-        指令已複製!
+        指令已複製！
     </div>
 
     <script>
         const config = {
-            audience: ['兒童', '國小生', '國高中生', '大學生', '社會青年', '成人', '家庭', '長者'],
             style: [
                 { label: '極簡風', en: 'Minimalist', preview: 'bg-white border' },
                 { label: '現代企業', en: 'Corporate Modern', preview: 'bg-slate-700' },
@@ -233,7 +201,6 @@
         };
 
         let selections = {
-            audience: '',
             style: [],
             layout: [],
             color: [],
@@ -241,40 +208,7 @@
         };
 
         function init() {
-            // Populate Audience
-            const audGroup = document.getElementById('group-audience');
-            config.audience.forEach(aud => {
-                const btn = document.createElement('button');
-                btn.className = 'px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold hover:border-emerald-500 transition shadow-sm';
-                btn.innerText = aud;
-                btn.onclick = () => {
-                    document.querySelectorAll('#group-audience button').forEach(b => {
-                        b.className = 'px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold hover:border-emerald-500 transition shadow-sm';
-                    });
-                    btn.className = 'px-4 py-2 border rounded-full text-xs font-bold transition shadow-sm bg-emerald-500 text-white border-emerald-500';
-                    selections.audience = aud;
-                    updatePrompt();
-                };
-                audGroup.appendChild(btn);
-            });
-
-            // Custom audience input
-            document.getElementById('custom-audience').oninput = (e) => {
-                if (e.target.value) {
-                    document.querySelectorAll('#group-audience button').forEach(b => {
-                        b.className = 'px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold hover:border-emerald-500 transition shadow-sm';
-                    });
-                    selections.audience = e.target.value;
-                } else {
-                    selections.audience = '';
-                }
-                updatePrompt();
-            };
-
-            // Populate other sections
             Object.keys(config).forEach(key => {
-                if (key === 'audience') return;
-                
                 const container = document.getElementById(`group-${key}`);
                 config[key].forEach(opt => {
                     const card = document.createElement('div');
@@ -298,13 +232,16 @@
                     card.onclick = () => {
                         const index = selections[key].indexOf(opt.en);
                         if (index > -1) {
+                            // Cancel selection
                             selections[key].splice(index, 1);
                             card.classList.remove('selected');
                         } else {
+                            // New selection (limit 2)
                             if (selections[key].length < 2) {
                                 selections[key].push(opt.en);
                                 card.classList.add('selected');
                             } else {
+                                // Shake or visual feedback for limit
                                 card.classList.add('animate-pulse');
                                 setTimeout(() => card.classList.remove('animate-pulse'), 500);
                             }
@@ -315,13 +252,6 @@
                     container.appendChild(card);
                 });
             });
-
-            // 面板收合邏輯
-            const panel = document.getElementById('result-panel');
-            const toggle = document.getElementById('panel-toggle');
-            toggle.onclick = () => {
-                panel.classList.toggle('collapsed');
-            };
         }
 
         function updateUI(key) {
@@ -337,26 +267,20 @@
 
         function updatePrompt() {
             const output = document.getElementById('prompt-output');
-            const { audience, style, layout, color, visual } = selections;
+            const { style, layout, color, visual } = selections;
             
-            const hasSelection = audience || [style, layout, color, visual].some(arr => arr.length > 0);
+            const hasSelection = [style, layout, color, visual].some(arr => arr.length > 0);
             
             if (!hasSelection) {
-                output.innerText = "尚未選擇... 請從上方點選風格維度(每類最多 2 項)。";
+                output.innerText = "尚未選擇... 請從上方點選風格維度（每類最多 2 項）。";
                 return;
             }
 
             const formatArr = (arr) => arr.length > 0 ? arr.join(" and ") : "Professional/Default";
 
-            let prompt = `Act as a presentation designer. Please analyze the provided source material and organize the content into a structured presentation outline using the following visual logic:
+            const prompt = `Act as a presentation designer. Please analyze the provided source material and organize the content into a structured presentation outline using the following visual logic:
 
-[Visual Style Configuration]`;
-
-            if (audience) {
-                prompt += `\n- Target Audience: ${audience}`;
-            }
-
-            prompt += `
+[Visual Style Configuration]
 - Overall Theme: A blend of ${formatArr(style)} style.
 - Layout Structure: Incorporating ${formatArr(layout)} structures.
 - Color Palette: Based on ${formatArr(color)} tones.
@@ -368,27 +292,19 @@ For each slide/section:
 2. Visual Concept: Describe a specific background and layout based on the configuration above.
 3. Content: 3-5 concise bullet points strictly based on the provided documents.
 
-Please ensure the tone is professional and suitable for the selected styles${audience ? ' and target audience' : ''}.`;
+Please ensure the tone is professional and suitable for the selected styles.`;
 
             output.innerText = prompt;
         }
 
-        document.getElementById('reset-btn').onclick = (e) => {
-            e.stopPropagation();
-            selections = { audience: '', style: [], layout: [], color: [], visual: [] };
+        document.getElementById('reset-btn').onclick = () => {
+            selections = { style: [], layout: [], color: [], visual: [] };
             document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-            document.querySelectorAll('#group-audience button').forEach(b => {
-                b.className = 'px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold hover:border-emerald-500 transition shadow-sm';
-            });
-            document.getElementById('custom-audience').value = '';
-            Object.keys(selections).forEach(key => {
-                if (key !== 'audience') updateUI(key);
-            });
+            Object.keys(selections).forEach(key => updateUI(key));
             updatePrompt();
         };
 
-        document.getElementById('copy-btn').onclick = (e) => {
-            e.stopPropagation();
+        document.getElementById('copy-btn').onclick = () => {
             const text = document.getElementById('prompt-output').innerText;
             if (text.includes("尚未選擇")) return;
             
